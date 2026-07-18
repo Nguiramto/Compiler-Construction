@@ -1,0 +1,158 @@
+/* =========================================================================
+ * AfriLang.cup
+ * Scenario E: Community Health Centre
+ *
+ * Java CUP grammar specification for the AfriLang syntax parser.
+ * Generates: parser.java, sym.java
+ *
+ * Build (after installing java-cup-11b.jar):
+ *   java -jar java-cup-11b.jar -parser parser -symbols sym -destdir generated src/AfriLang.cup
+ * ========================================================================= */
+
+import java_cup.runtime.*;
+import java.util.ArrayList;
+import java.util.List;
+
+parser code {:
+    /* Collected human-readable descriptions of each parsed statement,
+       used to print the "Parsed statements:" report. */
+    private List<String> statements = new ArrayList<>();
+    private int errorCount = 0;
+
+    public List<String> getStatements() { return statements; }
+    public int getErrorCount() { return errorCount; }
+
+    public void record(String description) {
+        statements.add((statements.size() + 1) + ". " + description);
+    }
+
+    @Override
+    public void syntax_error(Symbol s) {
+        errorCount++;
+        int line = (s.left >= 0) ? s.left : -1;
+        System.out.println("Syntax error at line " + line + ": unexpected token near '" +
+            (s.value == null ? "" : s.value) + "'");
+    }
+
+    @Override
+    public void unrecovered_syntax_error(Symbol s) {
+        /* Prevent CUP from throwing; we already reported it above. */
+    }
+:}
+
+/* ------------------------- Terminals ------------------------- */
+terminal              PATIENT, ADMIT, DISCHARGE, TEMPERATURE, WEIGHT, APPOINTMENT, SHOW, AGE, ON, IF;
+terminal              ASSIGN, PLUS, MINUS, TIMES, DIVIDE;
+terminal              GT, LT, GE, LE, EQ, NE;
+terminal              SEMI, LPAREN, RPAREN, LBRACE, RBRACE;
+terminal String       IDENTIFIER, STRING;
+terminal Integer      INTEGER;
+terminal Double       DECIMAL;
+
+/* ----------------------- Non-terminals ------------------------ */
+non terminal                program;
+non terminal                statement_list;
+non terminal                statement;
+non terminal                declaration;
+non terminal                assignment;
+non terminal                transaction;
+non terminal                output_statement;
+non terminal                conditional_statement;
+non terminal                condition;
+non terminal Integer        comparison_operator;
+non terminal Double         expression;
+non terminal Double         term;
+non terminal Double         factor;
+
+/* ------------------------- Precedence -------------------------- */
+precedence left PLUS, MINUS;
+precedence left TIMES, DIVIDE;
+
+/* ---------------------------------------------------------------
+   Grammar
+   --------------------------------------------------------------- */
+
+start with program;
+
+program ::= statement_list
+          ;
+
+statement_list ::= statement_list statement
+                 | statement
+                 ;
+
+statement ::= declaration SEMI
+            | assignment SEMI
+            | transaction SEMI
+            | output_statement SEMI
+            | conditional_statement
+            ;
+
+/* 1. Entity declaration: patient Musa age = 35 */
+declaration ::= PATIENT IDENTIFIER:name AGE ASSIGN INTEGER:val
+                {: parser.record("Patient declaration: " + name + " (age " + val + ")"); :}
+              ;
+
+/* 2. Attribute / variable assignment: temperature Musa = 38.5  |  weight Musa = 60.5
+      also a plain arithmetic assignment: balance = 10 * 5 */
+assignment ::= TEMPERATURE IDENTIFIER:name ASSIGN expression:e
+                {: parser.record("Temperature record: " + name + " = " + e); :}
+             | WEIGHT IDENTIFIER:name ASSIGN expression:e
+                {: parser.record("Weight record: " + name + " = " + e); :}
+             | IDENTIFIER:name ASSIGN expression:e
+                {: parser.record("Variable assignment: " + name + " = " + e); :}
+             ;
+
+/* 3. Scenario-specific transactions */
+transaction ::= ADMIT IDENTIFIER:name
+                {: parser.record("Admission: " + name); :}
+              | DISCHARGE IDENTIFIER:name
+                {: parser.record("Discharge: " + name); :}
+              | APPOINTMENT IDENTIFIER:name ON STRING:date
+                {: parser.record("Appointment: " + name + " on \"" + date + "\""); :}
+              ;
+
+/* 4. Output statement */
+output_statement ::= SHOW PATIENT IDENTIFIER:name
+                       {: parser.record("Patient enquiry: " + name); :}
+                    | SHOW TEMPERATURE IDENTIFIER:name
+                       {: parser.record("Temperature enquiry: " + name); :}
+                    | SHOW WEIGHT IDENTIFIER:name
+                       {: parser.record("Weight enquiry: " + name); :}
+                    | SHOW IDENTIFIER:name
+                       {: parser.record("Variable enquiry: " + name); :}
+                    ;
+
+/* 5. Conditional statement: if temperature Musa >= 38.0 { ... } */
+conditional_statement ::= IF condition LBRACE
+                             {: parser.record("Conditional block entered"); :}
+                           statement_list RBRACE
+                         ;
+
+condition ::= expression comparison_operator expression
+            ;
+
+comparison_operator ::= GT {: RESULT = 1; :}
+                       | LT {: RESULT = 2; :}
+                       | GE {: RESULT = 3; :}
+                       | LE {: RESULT = 4; :}
+                       | EQ {: RESULT = 5; :}
+                       | NE {: RESULT = 6; :}
+                       ;
+
+/* 6. Arithmetic expressions with standard precedence */
+expression ::= expression:l PLUS term:r   {: RESULT = l + r; :}
+             | expression:l MINUS term:r  {: RESULT = l - r; :}
+             | term:t                     {: RESULT = t; :}
+             ;
+
+term ::= term:l TIMES factor:r   {: RESULT = l * r; :}
+       | term:l DIVIDE factor:r  {: RESULT = l / r; :}
+       | factor:f                {: RESULT = f; :}
+       ;
+
+factor ::= INTEGER:i              {: RESULT = i.doubleValue(); :}
+         | DECIMAL:d              {: RESULT = d; :}
+         | IDENTIFIER:v           {: RESULT = 0.0; /* symbol table lookup could resolve this */ :}
+         | LPAREN expression:e RPAREN {: RESULT = e; :}
+         ;
