@@ -1,0 +1,4 @@
+// Test 5: missing semicolon after a statement
+patient Atim age = 22
+temperature Atim = 36.6;
+show patient Atim;

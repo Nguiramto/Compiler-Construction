@@ -1,1 +1,5 @@
-
+// Test 1: register a patient and take a temperature reading
+patient Musa age = 35;
+temperature Musa = 38.5;
+appointment Musa on "2026-07-16";
+show patient Musa;

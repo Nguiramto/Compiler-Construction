@@ -1,0 +1,4 @@
+// Test 4: contains an illegal character '@'
+patient Namusoke age = 40;
+temperature Namusoke = 37@5;
+show patient Namusoke;

@@ -1,0 +1,5 @@
+// Test 6: several lexical and syntax errors together
+patient Okello age = 45;
+temperature Okello = 39#0;
+appointment Okello "2026-07-20";
+show patient Okello

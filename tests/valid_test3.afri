@@ -1,0 +1,8 @@
+// Test 3: conditional statement using a comparison
+patient Kato age = 50;
+temperature Kato = 39.2;
+if temperature_reading >= 38.0 {
+    appointment Kato on "2026-07-18";
+    show patient Kato;
+}
+discharge Kato;
